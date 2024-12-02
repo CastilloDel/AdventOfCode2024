@@ -24,8 +24,7 @@ fn day1_part2(input: &str) -> usize {
         .iter()
         .map(check_report_with_dampener)
         .filter(|&val| val)
-        .collect::<Vec<_>>()
-        .len()
+        .count()
 }
 
 fn read_number_lists(input: &str) -> Vec<Vec<i64>> {
@@ -50,14 +49,11 @@ fn check_report(report: &Vec<i64>) -> bool {
 }
 
 fn check_report_with_dampener(report: &Vec<i64>) -> bool {
-    for i in 0..report.len() {
+    (0..report.len()).any(|i| {
         let mut report_clone = report.clone();
         report_clone.remove(i);
-        if check_report(&report_clone) {
-            return true;
-        }
-    }
-    false
+        check_report(&report_clone)
+    })
 }
 
 #[cfg(test)]
