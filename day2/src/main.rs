@@ -4,6 +4,8 @@ fn main() {
     let contents = fs::read_to_string("input").unwrap();
     let result = day1_part1(&contents);
     println!("Day1 part 1 result: {result}");
+    let result = day1_part2(&contents);
+    println!("Day1 part 2 result: {result}");
 }
 
 fn day1_part1(input: &str) -> usize {
@@ -11,6 +13,16 @@ fn day1_part1(input: &str) -> usize {
     numbers
         .iter()
         .map(check_report)
+        .filter(|&val| val)
+        .collect::<Vec<_>>()
+        .len()
+}
+
+fn day1_part2(input: &str) -> usize {
+    let numbers = read_number_lists(input);
+    numbers
+        .iter()
+        .map(check_report_with_dampener)
         .filter(|&val| val)
         .collect::<Vec<_>>()
         .len()
@@ -37,6 +49,17 @@ fn check_report(report: &Vec<i64>) -> bool {
     ascending || descending
 }
 
+fn check_report_with_dampener(report: &Vec<i64>) -> bool {
+    for i in 0..report.len() {
+        let mut report_clone = report.clone();
+        report_clone.remove(i);
+        if check_report(&report_clone) {
+            return true;
+        }
+    }
+    false
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -52,5 +75,19 @@ mod tests {
         let contents = fs::read_to_string("input").unwrap();
         let result = day1_part1(&contents);
         assert_eq!(result, 490);
+    }
+
+    #[test]
+    fn part2_correct_output_for_test_input() {
+        let contents = fs::read_to_string("test_input").unwrap();
+        let result = day1_part2(&contents);
+        assert_eq!(result, 4);
+    }
+
+    #[test]
+    fn part2_correct_output_for_input() {
+        let contents = fs::read_to_string("input").unwrap();
+        let result = day1_part2(&contents);
+        assert_eq!(result, 536);
     }
 }
