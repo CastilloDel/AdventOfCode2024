@@ -62,16 +62,28 @@ impl Index<Position> for Matrix {
 
 fn main() {
     let contents = fs::read_to_string("input").unwrap();
-    let result = day1_part1(&contents);
-    println!("Day1 part 1 result: {result}");
+    let result = day4_part1(&contents);
+    println!("Day4 part 1 result: {result}");
+    let result = day4_part2(&contents);
+    println!("Day4 part 2 result: {result}");
 }
 
-fn day1_part1(input: &str) -> usize {
+fn day4_part1(input: &str) -> usize {
     let matrix = read_letter_matrix(input);
     (0..matrix.m())
         .flat_map(|i| (0..matrix.n()).map(move |j| (i, j)))
-        .map(|(i, j)| find_xmas_in_neighborhood(&matrix, (i, j)))
+        .filter(|&pos| matrix[pos] == 'X')
+        .map(|pos| find_xmas_in_neighborhood(&matrix, pos))
         .sum()
+}
+
+fn day4_part2(input: &str) -> usize {
+    let matrix = read_letter_matrix(input);
+    (0..matrix.m())
+        .flat_map(|i| (0..matrix.n()).map(move |j| (i, j)))
+        .filter(|&pos| matrix[pos] == 'A')
+        .filter(|&pos| find_cross_mas_in_neighborhood(&matrix, pos))
+        .count()
 }
 
 fn find_xmas_in_neighborhood(matrix: &Matrix, pos: Position) -> usize {
@@ -87,25 +99,34 @@ fn find_xmas_in_neighborhood(matrix: &Matrix, pos: Position) -> usize {
     ]
     .iter()
     .zip(std::iter::repeat(pos))
-    .map(|(direction, pos)| find_xmas_in_direction(matrix, pos, *direction))
+    .map(|(direction, pos)| find_mas_in_direction(matrix, pos, *direction))
     .filter(|&condition| condition)
     .count()
 }
 
-fn find_xmas_in_direction(matrix: &Matrix, mut pos: Position, direction: Direction) -> bool {
-    if matrix[pos] != 'X' {
-        return false;
-    }
+fn find_mas_in_direction(matrix: &Matrix, mut pos: Position, direction: Direction) -> bool {
     for letter in "MAS".chars() {
         pos = match matrix.get_neighbor_in_direction(pos, direction) {
-            Some(pos) => pos,
-            None => return false,
+            Some(pos) if matrix[pos] == letter => pos,
+            _ => return false,
         };
-        if matrix[pos] != letter {
-            return false;
-        }
     }
     true
+}
+
+fn find_cross_mas_in_neighborhood(matrix: &Matrix, pos: Position) -> bool {
+    let cross = [
+        Direction::UpLeft,
+        Direction::UpRight,
+        Direction::DownRight,
+        Direction::DownLeft,
+    ]
+    .iter()
+    .filter_map(|&direction| matrix.get_neighbor_in_direction(pos, direction))
+    .map(|pos| matrix[pos])
+    .collect::<String>();
+    let valid_crosses = ["MSSM", "SMMS", "SSMM", "MMSS"];
+    valid_crosses.contains(&cross.as_str())
 }
 
 fn read_letter_matrix(input: &str) -> Matrix {
@@ -120,14 +141,28 @@ mod tests {
     #[test]
     fn part1_correct_output_for_test_input() {
         let contents = fs::read_to_string("test_input").unwrap();
-        let result = day1_part1(&contents);
+        let result = day4_part1(&contents);
         assert_eq!(result, 18);
     }
 
     #[test]
     fn part1_correct_output_for_input() {
         let contents = fs::read_to_string("input").unwrap();
-        let result = day1_part1(&contents);
+        let result = day4_part1(&contents);
         assert_eq!(result, 2613);
+    }
+
+    #[test]
+    fn part2_correct_output_for_test_input() {
+        let contents = fs::read_to_string("test_input").unwrap();
+        let result = day4_part2(&contents);
+        assert_eq!(result, 9);
+    }
+
+    #[test]
+    fn part2_correct_output_for_input() {
+        let contents = fs::read_to_string("input").unwrap();
+        let result = day4_part2(&contents);
+        assert_eq!(result, 1905);
     }
 }
