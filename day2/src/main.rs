@@ -2,13 +2,13 @@ use std::fs;
 
 fn main() {
     let contents = fs::read_to_string("input").unwrap();
-    let result = day1_part1(&contents);
+    let result = day2_part1(&contents);
     println!("Day1 part 1 result: {result}");
-    let result = day1_part2(&contents);
+    let result = day2_part2(&contents);
     println!("Day1 part 2 result: {result}");
 }
 
-fn day1_part1(input: &str) -> usize {
+fn day2_part1(input: &str) -> usize {
     let numbers = read_number_lists(input);
     numbers
         .iter()
@@ -18,7 +18,7 @@ fn day1_part1(input: &str) -> usize {
         .len()
 }
 
-fn day1_part2(input: &str) -> usize {
+fn day2_part2(input: &str) -> usize {
     let numbers = read_number_lists(input);
     numbers
         .iter()
@@ -62,28 +62,28 @@ mod tests {
     #[test]
     fn part1_correct_output_for_test_input() {
         let contents = fs::read_to_string("test_input").unwrap();
-        let result = day1_part1(&contents);
+        let result = day2_part1(&contents);
         assert_eq!(result, 2);
     }
 
     #[test]
     fn part1_correct_output_for_input() {
         let contents = fs::read_to_string("input").unwrap();
-        let result = day1_part1(&contents);
+        let result = day2_part1(&contents);
         assert_eq!(result, 490);
     }
 
     #[test]
     fn part2_correct_output_for_test_input() {
         let contents = fs::read_to_string("test_input").unwrap();
-        let result = day1_part2(&contents);
+        let result = day2_part2(&contents);
         assert_eq!(result, 4);
     }
 
     #[test]
     fn part2_correct_output_for_input() {
         let contents = fs::read_to_string("input").unwrap();
-        let result = day1_part2(&contents);
+        let result = day2_part2(&contents);
         assert_eq!(result, 536);
     }
 }

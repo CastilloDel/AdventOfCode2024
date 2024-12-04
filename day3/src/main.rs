@@ -2,13 +2,13 @@ use std::fs;
 
 fn main() {
     let contents = fs::read_to_string("input").unwrap();
-    let result = day1_part1(&contents);
+    let result = day3_part1(&contents);
     println!("Day1 part 1 result: {result}");
-    let result = day1_part2(&contents);
+    let result = day3_part2(&contents);
     println!("Day1 part 2 result: {result}");
 }
 
-fn day1_part1(input: &str) -> u64 {
+fn day3_part1(input: &str) -> u64 {
     let re = regex::Regex::new(r"mul\((\d{1,3}),(\d{1,3})\)").unwrap();
     re.captures_iter(input)
         .map(|s| {
@@ -20,7 +20,7 @@ fn day1_part1(input: &str) -> u64 {
         .sum()
 }
 
-fn day1_part2(input: &str) -> u64 {
+fn day3_part2(input: &str) -> u64 {
     let re = regex::Regex::new(r"mul\(\d{1,3},\d{1,3}\)|do\(\)|don't\(\)").unwrap();
     let mut enabled = true;
     re.find_iter(input)
@@ -49,28 +49,28 @@ mod tests {
     #[test]
     fn part1_correct_output_for_test_input() {
         let contents = fs::read_to_string("test_input_part1").unwrap();
-        let result = day1_part1(&contents);
+        let result = day3_part1(&contents);
         assert_eq!(result, 161);
     }
 
     #[test]
     fn part1_correct_output_for_input() {
         let contents = fs::read_to_string("input").unwrap();
-        let result = day1_part1(&contents);
+        let result = day3_part1(&contents);
         assert_eq!(result, 178886550);
     }
 
     #[test]
     fn part2_correct_output_for_test_input() {
         let contents = fs::read_to_string("test_input_part2").unwrap();
-        let result = day1_part2(&contents);
+        let result = day3_part2(&contents);
         assert_eq!(result, 48);
     }
 
     #[test]
     fn part2_correct_output_for_input() {
         let contents = fs::read_to_string("input").unwrap();
-        let result = day1_part2(&contents);
+        let result = day3_part2(&contents);
         assert_eq!(result, 87163705);
     }
 }
