@@ -9,6 +9,8 @@ fn main() {
     let contents = fs::read_to_string("input").unwrap();
     let result = day8_part1(&contents);
     println!("Day8 part 1 result: {result}");
+    let result = day8_part2(&contents);
+    println!("Day8 part 2 result: {result}");
 }
 
 fn day8_part1(input: &str) -> usize {
@@ -22,21 +24,27 @@ fn day8_part1(input: &str) -> usize {
         .len()
 }
 
+fn day8_part2(input: &str) -> usize {
+    let antennas = read_antennas(input);
+    let m = input.lines().count();
+    let n = input.lines().next().unwrap().len();
+    antennas
+        .into_iter()
+        .flat_map(|(_, antennas)| get_harmonic_antinodes_for_type(&antennas, m, n))
+        .collect::<HashSet<_>>()
+        .len()
+}
+
 fn get_antinodes_for_type(antennas: &[Position], m: usize, n: usize) -> Vec<Position> {
     antennas
         .iter()
         .enumerate()
         .flat_map(|(index, &pos1)| antennas[index + 1..].iter().map(move |&pos2| (pos1, pos2)))
-        .flat_map(|(pos1, pos2)| get_number_of_antinodes_for_pair(pos1, pos2, m, n))
+        .flat_map(|(pos1, pos2)| get_antinodes_for_pair(pos1, pos2, m, n))
         .collect()
 }
 
-fn get_number_of_antinodes_for_pair(
-    pos1: Position,
-    pos2: Position,
-    m: usize,
-    n: usize,
-) -> Vec<Position> {
+fn get_antinodes_for_pair(pos1: Position, pos2: Position, m: usize, n: usize) -> Vec<Position> {
     let distance = (pos1.0 - pos2.0, pos1.1 - pos2.1);
     let antinode1 = (pos1.0 + distance.0, pos1.1 + distance.1);
     let antinode2 = (pos2.0 - distance.0, pos2.1 - distance.1);
@@ -44,6 +52,36 @@ fn get_number_of_antinodes_for_pair(
         .into_iter()
         .filter(|&pos| check_bounds(pos, m, n))
         .collect()
+}
+
+fn get_harmonic_antinodes_for_type(antennas: &[Position], m: usize, n: usize) -> Vec<Position> {
+    antennas
+        .iter()
+        .enumerate()
+        .flat_map(|(index, &pos1)| antennas[index + 1..].iter().map(move |&pos2| (pos1, pos2)))
+        .flat_map(|(pos1, pos2)| get_harmonic_antinodes_for_pair(pos1, pos2, m, n))
+        .collect()
+}
+
+fn get_harmonic_antinodes_for_pair(
+    pos1: Position,
+    pos2: Position,
+    m: usize,
+    n: usize,
+) -> Vec<Position> {
+    let mut antinodes = vec![pos1, pos2];
+    let distance = (pos1.0 - pos2.0, pos1.1 - pos2.1);
+    let mut antinode = (pos1.0 + distance.0, pos1.1 + distance.1);
+    while check_bounds(antinode, m, n) {
+        antinodes.push(antinode);
+        antinode = (antinode.0 + distance.0, antinode.1 + distance.1);
+    }
+    antinode = (pos2.0 - distance.0, pos2.1 - distance.1);
+    while check_bounds(antinode, m, n) {
+        antinodes.push(antinode);
+        antinode = (antinode.0 - distance.0, antinode.1 - distance.1);
+    }
+    antinodes
 }
 
 fn check_bounds(pos: Position, m: usize, n: usize) -> bool {
@@ -78,6 +116,19 @@ mod tests {
     fn part1_correct_output_for_input() {
         let contents = fs::read_to_string("input").unwrap();
         let result = day8_part1(&contents);
-        assert_eq!(result, 2613);
+        assert_eq!(result, 285);
+    }
+    #[test]
+    fn part2_correct_output_for_test_input() {
+        let contents = fs::read_to_string("test_input").unwrap();
+        let result = day8_part2(&contents);
+        assert_eq!(result, 34);
+    }
+
+    #[test]
+    fn part2_correct_output_for_input() {
+        let contents = fs::read_to_string("input").unwrap();
+        let result = day8_part2(&contents);
+        assert_eq!(result, 944);
     }
 }
