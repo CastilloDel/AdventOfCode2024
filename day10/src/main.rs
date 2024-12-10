@@ -93,16 +93,17 @@ impl<T> IndexMut<Position> for Map<T> {
 
 fn main() {
     let contents = fs::read_to_string("input").unwrap();
-    let result = day6_part1(&contents);
-    println!("Day6 part 1 result: {result}");
+    let result = day10_part1(&contents);
+    println!("Day10 part 1 result: {result}");
+    let result = day10_part2(&contents);
+    println!("Day10 part 2 result: {result}");
 }
 
-fn day6_part1(input: &str) -> usize {
+fn day10_part1(input: &str) -> usize {
     let map = read_input(input);
     map.iter_with_positions()
         .filter(|(_, &height)| height == 0)
         .map(|(pos, _)| pos)
-        .collect::<Vec<Position>>()
         .into_iter()
         .map(|start| {
             get_reachable_positions(start, &map)
@@ -113,28 +114,53 @@ fn day6_part1(input: &str) -> usize {
         .sum()
 }
 
+fn day10_part2(input: &str) -> u32 {
+    let map = read_input(input);
+    map.iter_with_positions()
+        .filter(|(_, &height)| height == 0)
+        .map(|(pos, _)| pos)
+        .into_iter()
+        .map(|start| get_number_of_paths_to_top(start, &map))
+        .sum()
+}
+
 fn get_reachable_positions(start: Position, map: &Map<u32>) -> HashSet<Position> {
     let mut reachable = HashSet::new();
+    let mut starters = HashSet::from([start]);
+    for _height in 1..=9 {
+        starters = starters
+            .into_iter()
+            .flat_map(|start| get_reachable_in_one_step(start, map))
+            .collect();
+        reachable.extend(&starters);
+    }
+    reachable
+}
+
+fn get_number_of_paths_to_top(start: Position, map: &Map<u32>) -> u32 {
     let mut starters = vec![start];
+    for _height in 1..=9 {
+        starters = starters
+            .into_iter()
+            .flat_map(|start| get_reachable_in_one_step(start, map))
+            .collect();
+    }
+    starters.len() as u32
+}
+
+fn get_reachable_in_one_step(pos: Position, map: &Map<u32>) -> Vec<Position> {
     let directions = [
         Direction::Up,
         Direction::Right,
         Direction::Down,
         Direction::Left,
     ];
-    for height in 1..=9 {
-        starters = starters
-            .into_iter()
-            .flat_map(|start| {
-                directions
-                    .iter()
-                    .filter_map(move |dir| map.get_neighbor_in_direction(start, *dir))
-            })
-            .filter(|&pos| map[pos] == height)
-            .collect();
-        reachable.extend(&starters);
-    }
-    reachable
+    let starting_height = map[pos];
+    directions
+        .into_iter()
+        .filter_map(move |dir| map.get_neighbor_in_direction(pos, dir))
+        .filter(|&pos| map[pos] == starting_height + 1)
+        .collect()
 }
 
 fn read_input(input: &str) -> Map<u32> {
@@ -151,14 +177,28 @@ mod tests {
     #[test]
     fn part1_correct_output_for_test_input() {
         let contents = fs::read_to_string("test_input").unwrap();
-        let result = day6_part1(&contents);
+        let result = day10_part1(&contents);
         assert_eq!(result, 36);
     }
 
     #[test]
     fn part1_correct_output_for_input() {
         let contents = fs::read_to_string("input").unwrap();
-        let result = day6_part1(&contents);
+        let result = day10_part1(&contents);
         assert_eq!(result, 574);
+    }
+
+    #[test]
+    fn part2_correct_output_for_test_input() {
+        let contents = fs::read_to_string("test_input").unwrap();
+        let result = day10_part2(&contents);
+        assert_eq!(result, 81);
+    }
+
+    #[test]
+    fn part2_correct_output_for_input() {
+        let contents = fs::read_to_string("input").unwrap();
+        let result = day10_part2(&contents);
+        assert_eq!(result, 1238);
     }
 }
