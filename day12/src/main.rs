@@ -79,21 +79,31 @@ impl<T> IndexMut<Position> for Matrix<T> {
 #[derive(Debug)]
 struct Region {
     positions: HashSet<Position>,
-    area: usize,
     perimeter: usize,
+    value: char,
 }
 
 fn main() {
     let contents = fs::read_to_string("input").unwrap();
     let result = day12_part1(&contents);
     println!("Day12 part 1 result: {result}");
+    let result = day12_part2(&contents);
+    println!("Day12 part 2 result: {result}");
 }
 
 fn day12_part1(input: &str) -> usize {
     let matrix = read_input(input);
     compute_regions(&matrix)
         .into_iter()
-        .map(|region| region.perimeter * region.area)
+        .map(|region| region.perimeter * region.positions.len())
+        .sum()
+}
+
+fn day12_part2(input: &str) -> usize {
+    let matrix = read_input(input);
+    compute_regions(&matrix)
+        .into_iter()
+        .map(|region| compute_sides_from_regions(&region, &matrix) * region.positions.len())
         .sum()
 }
 
@@ -115,10 +125,60 @@ fn compute_regions(matrix: &Matrix<char>) -> Vec<Region> {
     regions
 }
 
+fn compute_sides_from_regions(region: &Region, matrix: &Matrix<char>) -> usize {
+    let mut sides = 0;
+    // Horizontal sides
+    for i in 0..matrix.m() {
+        let series = (0..matrix.n()).map(|j| (i, j));
+        sides += check_sides_in_series(region, series.clone(), Direction::Up, matrix);
+        sides += check_sides_in_series(region, series, Direction::Down, matrix);
+    }
+    // Vertical sides
+    for j in 0..matrix.n() {
+        let series = (0..matrix.m()).map(|i| (i, j));
+        sides += check_sides_in_series(region, series.clone(), Direction::Left, matrix);
+        sides += check_sides_in_series(region, series, Direction::Right, matrix);
+    }
+    sides
+}
+
+fn check_sides_in_series(
+    region: &Region,
+    series: impl Iterator<Item = Position>,
+    dir: Direction,
+    matrix: &Matrix<char>,
+) -> usize {
+    let mut sides = 0;
+    let mut in_side = false;
+    for pos in series {
+        if check_if_side_in_direction(region, pos, dir, matrix) {
+            if !in_side {
+                sides += 1;
+            }
+            in_side = true;
+        } else {
+            in_side = false;
+        }
+    }
+    sides
+}
+
+fn check_if_side_in_direction(
+    region: &Region,
+    pos: Position,
+    dir: Direction,
+    matrix: &Matrix<char>,
+) -> bool {
+    region.positions.contains(&pos)
+        && matrix
+            .get_neighbor_in_direction(pos, dir)
+            .map(|neighbor| matrix[neighbor] != region.value)
+            .unwrap_or(true)
+}
+
 fn create_region(pos: (usize, usize), matrix: &Matrix<char>) -> Region {
-    let region_value = matrix[pos];
+    let value = matrix[pos];
     let mut positions = HashSet::from([pos]);
-    let mut area = 1;
     let mut perimeter = 4;
     let mut unlooked_neighbors = vec![pos];
     while !unlooked_neighbors.is_empty() {
@@ -126,7 +186,7 @@ fn create_region(pos: (usize, usize), matrix: &Matrix<char>) -> Region {
         let neighbors = matrix
             .get_neighbors(pos_to_look)
             .into_iter()
-            .filter(|&neighbor| matrix[neighbor] == region_value)
+            .filter(|&neighbor| matrix[neighbor] == value)
             .filter(|neighbor| !positions.contains(neighbor))
             .collect::<Vec<Position>>();
         for neighbor in neighbors {
@@ -144,14 +204,13 @@ fn create_region(pos: (usize, usize), matrix: &Matrix<char>) -> Region {
             };
             unlooked_neighbors.push(neighbor);
             positions.insert(neighbor);
-            area += 1;
         }
     }
 
     Region {
         positions,
-        area,
         perimeter,
+        value,
     }
 }
 
@@ -178,5 +237,19 @@ mod tests {
         let contents = fs::read_to_string("input").unwrap();
         let result = day12_part1(&contents);
         assert_eq!(result, 1371306);
+    }
+
+    #[test]
+    fn part2_correct_output_for_test_input() {
+        let contents = fs::read_to_string("test_input").unwrap();
+        let result = day12_part2(&contents);
+        assert_eq!(result, 1206);
+    }
+
+    #[test]
+    fn part2_correct_output_for_input() {
+        let contents = fs::read_to_string("input").unwrap();
+        let result = day12_part2(&contents);
+        assert_eq!(result, 805880);
     }
 }
