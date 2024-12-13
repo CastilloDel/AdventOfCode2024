@@ -1,23 +1,34 @@
 use nom::{
-    character::complete::{multispace1, satisfy, u32},
+    character::complete::{multispace1, satisfy, u64},
     multi::{many1, separated_list1},
     sequence::{preceded, tuple},
     AsChar, IResult,
 };
 use std::fs;
 
-type Vector = (u32, u32);
+type Vector = (u64, u64);
 
 fn main() {
     let contents = fs::read_to_string("input").unwrap();
     let result = day13_part1(&contents);
     println!("Day13 part 1 result: {result}");
+    let result = day13_part2(&contents);
+    println!("Day13 part 2 result: {result}");
 }
 
-fn day13_part1(input: &str) -> u32 {
+fn day13_part1(input: &str) -> u64 {
     let (_, claw_machines) = read_input(input).unwrap();
     claw_machines
         .into_iter()
+        .filter_map(solve_claw_machine)
+        .sum()
+}
+
+fn day13_part2(input: &str) -> u64 {
+    let (_, claw_machines) = read_input(input).unwrap();
+    claw_machines
+        .into_iter()
+        .map(adjust_prize)
         .filter_map(solve_claw_machine)
         .sum()
 }
@@ -29,37 +40,31 @@ struct ClawMachine {
     prize: Vector,
 }
 
-fn solve_claw_machine(machine: ClawMachine) -> Option<u32> {
-    let possible_solutions_first_axis =
-        solve_claw_machine_one_axis(machine.a_movement.0, machine.b_movement.0, machine.prize.0);
-    let possible_solutions_second_axis =
-        solve_claw_machine_one_axis(machine.a_movement.1, machine.b_movement.1, machine.prize.1);
-    dbg!(machine);
-    dbg!(possible_solutions_first_axis
-        .iter()
-        .filter(|solution1| {
-            possible_solutions_second_axis
-                .iter()
-                .find(|solution2| solution1 == solution2)
-                .is_some()
-        })
-        .map(|v| v.0 * 3 + v.1)
-        .min())
+fn solve_claw_machine(machine: ClawMachine) -> Option<u64> {
+    let denominator_determinant = ((machine.a_movement.0 * machine.b_movement.1) as i64
+        - (machine.b_movement.0 * machine.a_movement.1) as i64)
+        as f64;
+    let x_determinant = ((machine.prize.0 * machine.b_movement.1) as i64
+        - (machine.b_movement.0 * machine.prize.1) as i64) as f64;
+    let y_determinant = ((machine.a_movement.0 * machine.prize.1) as i64
+        - (machine.prize.0 * machine.a_movement.1) as i64) as f64;
+    if denominator_determinant == 0.0 {
+        return None;
+    }
+
+    let a = x_determinant / denominator_determinant;
+    let b = y_determinant / denominator_determinant;
+    if a.fract() != 0.0 || b.fract() != 0.0 {
+        return None;
+    }
+
+    Some(a as u64 * 3 + b as u64)
 }
 
-fn solve_claw_machine_one_axis(a_movement: u32, b_movement: u32, prize: u32) -> Vec<Vector> {
-    let a_limit = prize / a_movement;
-    let mut possible_solutions = Vec::new();
-    for i in 0..=a_limit {
-        let rest = prize - a_movement * i;
-        if rest % b_movement == 0 {
-            possible_solutions.push((i, rest / b_movement));
-        }
-    }
-    possible_solutions
-        .into_iter()
-        .filter(|pushes| pushes.0 <= 100 && pushes.1 <= 100)
-        .collect()
+fn adjust_prize(mut claw_machine: ClawMachine) -> ClawMachine {
+    claw_machine.prize.0 += 10000000000000;
+    claw_machine.prize.1 += 10000000000000;
+    claw_machine
 }
 
 fn read_input(input: &str) -> IResult<&str, Vec<ClawMachine>> {
@@ -82,8 +87,8 @@ fn read_claw_machine(input: &str) -> IResult<&str, ClawMachine> {
 }
 fn read_vector(input: &str) -> IResult<&str, Vector> {
     tuple((
-        preceded(many1(satisfy(|c| !c.is_dec_digit())), u32),
-        preceded(many1(satisfy(|c| !c.is_dec_digit())), u32),
+        preceded(many1(satisfy(|c| !c.is_dec_digit())), u64),
+        preceded(many1(satisfy(|c| !c.is_dec_digit())), u64),
     ))(input)
 }
 
@@ -102,5 +107,19 @@ mod tests {
         let contents = fs::read_to_string("input").unwrap();
         let result = day13_part1(&contents);
         assert_eq!(result, 32067);
+    }
+
+    #[test]
+    fn part2_correct_output_for_test_input() {
+        let contents = fs::read_to_string("test_input").unwrap();
+        let result = day13_part2(&contents);
+        assert_eq!(result, 875318608908);
+    }
+
+    #[test]
+    fn part2_correct_output_for_input() {
+        let contents = fs::read_to_string("input").unwrap();
+        let result = day13_part2(&contents);
+        assert_eq!(result, 92871736253789);
     }
 }
