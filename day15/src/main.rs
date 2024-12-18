@@ -104,6 +104,8 @@ impl<T> IndexMut<Position> for Matrix<T> {
 enum Cell {
     Wall,
     Box,
+    LeftBox,
+    RightBox,
     Empty,
     Robot,
 }
@@ -112,6 +114,8 @@ fn main() {
     let contents = fs::read_to_string("input").unwrap();
     let result = day15_part1(&contents);
     println!("Day15 part 1 result: {result}");
+    let result = day15_part2(&contents);
+    println!("Day15 part 2 result: {result}");
 }
 
 fn day15_part1(input: &str) -> usize {
@@ -127,45 +131,98 @@ fn day15_part1(input: &str) -> usize {
         .sum()
 }
 
+fn day15_part2(input: &str) -> usize {
+    let (_, (mut matrix, moves)) = read_input(input).unwrap();
+    matrix = widen_warehouse(matrix);
+    for move_to_execute in moves {
+        matrix = execute_move(matrix, move_to_execute);
+    }
+    matrix
+        .iter_with_positions()
+        .filter(|(_, value)| **value == Cell::LeftBox)
+        .map(|(pos, _)| pos)
+        .map(|pos| pos.0 * 100 + pos.1)
+        .sum()
+}
+
 fn execute_move(mut matrix: Matrix<Cell>, move_to_execute: Direction) -> Matrix<Cell> {
     let (robot_pos, _) = matrix
         .iter_with_positions()
         .find(|(_, cell)| **cell == Cell::Robot)
         .unwrap(); // Safety: Always one robot
-    if check_movable(robot_pos, &matrix, move_to_execute) {
-        matrix[robot_pos] = Cell::Empty;
-        let mut pos = robot_pos;
-        let mut last_cell = Cell::Robot;
-        loop {
-            let next_pos = matrix
-                .get_neighbor_in_direction(pos, move_to_execute)
-                .unwrap();
-            let next_cell = matrix[next_pos];
-            matrix[next_pos] = last_cell;
-            if next_cell == Cell::Empty {
-                break;
-            }
-            pos = next_pos;
-            last_cell = next_cell;
-        }
+    if can_push_position(&matrix, robot_pos, move_to_execute) {
+        push_position(&mut matrix, robot_pos, move_to_execute);
     }
     matrix
 }
 
-fn check_movable(robot_pos: Position, matrix: &Matrix<Cell>, move_to_execute: Direction) -> bool {
-    let mut pos = robot_pos;
-    loop {
-        if let Some(next_pos) = matrix.get_neighbor_in_direction(pos, move_to_execute) {
-            match matrix[next_pos] {
-                Cell::Box => {
-                    pos = next_pos;
-                }
-                Cell::Empty => return true,
-                Cell::Wall => return false,
-                Cell::Robot => unreachable!(),
-            }
+fn can_push_position(matrix: &Matrix<Cell>, pos: Position, move_to_execute: Direction) -> bool {
+    let next_pos = matrix
+        .get_neighbor_in_direction(pos, move_to_execute)
+        .unwrap();
+    match matrix[next_pos] {
+        Cell::Wall => false,
+        Cell::Box => can_push_position(matrix, next_pos, move_to_execute),
+        Cell::Empty => true,
+        Cell::RightBox | Cell::LeftBox
+            if [Direction::Left, Direction::Right].contains(&move_to_execute) =>
+        {
+            can_push_position(matrix, next_pos, move_to_execute)
         }
+        Cell::LeftBox => {
+            can_push_position(matrix, next_pos, move_to_execute)
+                && can_push_position(matrix, (next_pos.0, next_pos.1 + 1), move_to_execute)
+        }
+        Cell::RightBox => {
+            can_push_position(matrix, next_pos, move_to_execute)
+                && can_push_position(matrix, (next_pos.0, next_pos.1 - 1), move_to_execute)
+        }
+        Cell::Robot => unreachable!(),
     }
+}
+
+fn push_position(matrix: &mut Matrix<Cell>, pos: Position, move_to_execute: Direction) {
+    let next_pos = matrix
+        .get_neighbor_in_direction(pos, move_to_execute)
+        .unwrap();
+    match matrix[next_pos] {
+        Cell::Box => push_position(matrix, next_pos, move_to_execute),
+        Cell::RightBox | Cell::LeftBox
+            if [Direction::Left, Direction::Right].contains(&move_to_execute) =>
+        {
+            push_position(matrix, next_pos, move_to_execute)
+        }
+        Cell::LeftBox => {
+            push_position(matrix, next_pos, move_to_execute);
+            push_position(matrix, (next_pos.0, next_pos.1 + 1), move_to_execute);
+        }
+        Cell::RightBox => {
+            push_position(matrix, next_pos, move_to_execute);
+            push_position(matrix, (next_pos.0, next_pos.1 - 1), move_to_execute);
+        }
+        _ => {}
+    };
+    matrix[next_pos] = matrix[pos];
+    matrix[pos] = Cell::Empty;
+}
+
+fn widen_warehouse(matrix: Matrix<Cell>) -> Matrix<Cell> {
+    let inner = matrix
+        .inner
+        .into_iter()
+        .map(|row| {
+            row.into_iter()
+                .flat_map(|cell| match cell {
+                    Cell::Wall => [Cell::Wall, Cell::Wall],
+                    Cell::Box => [Cell::LeftBox, Cell::RightBox],
+                    Cell::Empty => [Cell::Empty, Cell::Empty],
+                    Cell::Robot => [Cell::Robot, Cell::Empty],
+                    _ => unreachable!(),
+                })
+                .collect()
+        })
+        .collect();
+    Matrix { inner }
 }
 
 fn read_input(input: &str) -> IResult<&str, (Matrix<Cell>, Vec<Direction>)> {
@@ -202,6 +259,7 @@ fn read_cell(input: &str) -> IResult<&str, Cell> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
     fn part1_correct_output_for_test_input1() {
         let contents = fs::read_to_string("test_input1").unwrap();
@@ -221,5 +279,19 @@ mod tests {
         let contents = fs::read_to_string("input").unwrap();
         let result = day15_part1(&contents);
         assert_eq!(result, 1509074);
+    }
+
+    #[test]
+    fn part2_correct_output_for_test_input2() {
+        let contents = fs::read_to_string("test_input2").unwrap();
+        let result = day15_part2(&contents);
+        assert_eq!(result, 9021);
+    }
+
+    #[test]
+    fn part2_correct_output_for_input() {
+        let contents = fs::read_to_string("input").unwrap();
+        let result = day15_part2(&contents);
+        assert_eq!(result, 1521453);
     }
 }
