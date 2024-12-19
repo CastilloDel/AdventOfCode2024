@@ -112,11 +112,18 @@ fn main() {
     let contents = fs::read_to_string("message.txt").unwrap();
     let result = day16_part1(&contents);
     println!("Day16 part 1 result: {result}");
+    let result = day16_part2(&contents);
+    println!("Day16 part 2 result: {result}");
 }
 
 fn day16_part1(input: &str) -> usize {
     let (_, matrix) = read_input(input).unwrap();
-    get_path_to_end(&matrix)
+    get_distance_to_end(&matrix)
+}
+
+fn day16_part2(input: &str) -> usize {
+    let (_, matrix) = read_input(input).unwrap();
+    get_cells_in_optimal_paths_to_end(&matrix)
 }
 
 fn guess_distance(pos1: Position, pos2: Position) -> usize {
@@ -131,7 +138,7 @@ struct PositionWithDirection {
     direction: Direction,
 }
 
-fn get_path_to_end(matrix: &Matrix<Cell>) -> usize {
+fn get_distance_to_end(matrix: &Matrix<Cell>) -> usize {
     let (start_pos, _) = matrix
         .iter_with_positions()
         .find(|(_, cell)| **cell == Cell::Start)
@@ -195,6 +202,88 @@ fn get_path_to_end(matrix: &Matrix<Cell>) -> usize {
     unreachable!()
 }
 
+// A bit of duplication between days never hurt anybody XP
+fn get_cells_in_optimal_paths_to_end(matrix: &Matrix<Cell>) -> usize {
+    let (start_pos, _) = matrix
+        .iter_with_positions()
+        .find(|(_, cell)| **cell == Cell::Start)
+        .unwrap(); // Safety: Always one start
+    let start_direction = Direction::Right;
+    let (end_pos, _) = matrix
+        .iter_with_positions()
+        .find(|(_, cell)| **cell == Cell::End)
+        .unwrap(); // Safety: Always one end
+
+    let start = PositionWithDirection {
+        position: start_pos,
+        direction: start_direction,
+    };
+    let mut open = HashSet::from([start]);
+
+    let mut costs = HashMap::new();
+    costs.insert(start, 0);
+    let mut guesses = HashMap::new();
+    guesses.insert(start, guess_distance(start_pos, end_pos));
+    let mut came_from = HashMap::new();
+
+    while !open.is_empty() {
+        let current = open.iter().min_by_key(|pos| guesses[pos]).unwrap().clone();
+        open.remove(&current);
+        if current.position == end_pos {
+            return get_cells_in_path(current, &came_from).len();
+        }
+
+        let mut neighbors_with_cost = get_neighboring_directions(current.direction)
+            .into_iter()
+            .map(|dir| PositionWithDirection {
+                position: current.position,
+                direction: dir,
+            })
+            .map(|pos| (pos, 1000))
+            .collect::<Vec<_>>();
+        if let Some(neighbor_pos) =
+            matrix.get_neighbor_in_direction(current.position, current.direction)
+        {
+            if matrix[neighbor_pos] != Cell::Wall {
+                let pos = PositionWithDirection {
+                    position: neighbor_pos,
+                    direction: current.direction,
+                };
+                neighbors_with_cost.push((pos, 1));
+            }
+        }
+        for (neighbor, cost) in neighbors_with_cost {
+            let tentative_cost = costs[&current] + cost;
+            if tentative_cost < *costs.get(&neighbor).unwrap_or(&usize::MAX) {
+                costs.insert(neighbor, tentative_cost);
+                guesses.insert(
+                    neighbor,
+                    tentative_cost + guess_distance(neighbor.position, end_pos),
+                );
+                open.insert(neighbor);
+                came_from.insert(neighbor, vec![current]);
+            } else if tentative_cost == *costs.get(&neighbor).unwrap_or(&usize::MAX) {
+                came_from.get_mut(&neighbor).unwrap().push(current);
+            }
+        }
+    }
+
+    unreachable!()
+}
+
+fn get_cells_in_path(
+    end: PositionWithDirection,
+    came_from: &HashMap<PositionWithDirection, Vec<PositionWithDirection>>,
+) -> HashSet<Position> {
+    let mut total_cells = HashSet::from([end.position]);
+    if came_from.contains_key(&end) {
+        for cell in &came_from[&end] {
+            total_cells.extend(get_cells_in_path(*cell, came_from));
+        }
+    }
+    total_cells
+}
+
 fn get_neighboring_directions(dir: Direction) -> [Direction; 2] {
     match dir {
         Direction::Up | Direction::Down => [Direction::Left, Direction::Right],
@@ -235,5 +324,19 @@ mod tests {
         let contents = fs::read_to_string("input").unwrap();
         let result = day16_part1(&contents);
         assert_eq!(result, 72400);
+    }
+
+    #[test]
+    fn part2_correct_output_for_test_input1() {
+        let contents = fs::read_to_string("test_input").unwrap();
+        let result = day16_part2(&contents);
+        assert_eq!(result, 45);
+    }
+
+    #[test]
+    fn part2_correct_output_for_input() {
+        let contents = fs::read_to_string("input").unwrap();
+        let result = day16_part2(&contents);
+        assert_eq!(result, 435);
     }
 }
