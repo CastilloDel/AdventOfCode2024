@@ -95,6 +95,8 @@ fn main() {
     let contents = fs::read_to_string("message.txt").unwrap();
     let result = day18_part1(&contents, 71, 1024);
     println!("Day18 part 1 result: {result}");
+    let result = day18_part2(&contents, 71, 1024);
+    println!("Day18 part 1 result: {result}");
 }
 
 fn day18_part1(input: &str, size: usize, fallen_bytes: usize) -> usize {
@@ -105,7 +107,25 @@ fn day18_part1(input: &str, size: usize, fallen_bytes: usize) -> usize {
     for byte_pos in bytes.into_iter().take(fallen_bytes) {
         matrix[byte_pos] = Cell::Wall;
     }
-    get_distance_to_end(&matrix, (0, 0), (size - 1, size - 1))
+    get_distance_to_end(&matrix, (0, 0), (size - 1, size - 1)).unwrap()
+}
+
+fn day18_part2(input: &str, size: usize, fallen_bytes: usize) -> String {
+    let (_, bytes) = read_input(input).unwrap();
+    let mut matrix = Matrix {
+        inner: vec![vec![Cell::Empty; size]; size],
+    };
+    for &byte_pos in bytes.iter().take(fallen_bytes) {
+        matrix[byte_pos] = Cell::Wall;
+    }
+    for &byte_pos in bytes.iter().skip(fallen_bytes) {
+        matrix[byte_pos] = Cell::Wall;
+
+        if get_distance_to_end(&matrix, (0, 0), (size - 1, size - 1)).is_none() {
+            return format!("{},{}", byte_pos.1, byte_pos.0);
+        }
+    }
+    unreachable!()
 }
 
 fn guess_distance(pos1: Position, pos2: Position) -> usize {
@@ -113,7 +133,7 @@ fn guess_distance(pos1: Position, pos2: Position) -> usize {
         + (pos1.1 as isize - pos2.1 as isize).abs() as usize
 }
 
-fn get_distance_to_end(matrix: &Matrix<Cell>, start: Position, end: Position) -> usize {
+fn get_distance_to_end(matrix: &Matrix<Cell>, start: Position, end: Position) -> Option<usize> {
     let mut open = HashSet::from([start]);
 
     let mut costs = HashMap::new();
@@ -125,7 +145,7 @@ fn get_distance_to_end(matrix: &Matrix<Cell>, start: Position, end: Position) ->
         let current = open.iter().min_by_key(|pos| guesses[pos]).unwrap().clone();
         open.remove(&current);
         if current == end {
-            return costs[&current];
+            return Some(costs[&current]);
         }
 
         let neighbors = matrix
@@ -143,7 +163,7 @@ fn get_distance_to_end(matrix: &Matrix<Cell>, start: Position, end: Position) ->
         }
     }
 
-    unreachable!()
+    None
 }
 
 fn read_input(input: &str) -> IResult<&str, Vec<Position>> {
@@ -161,7 +181,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn part1_correct_output_for_test_input1() {
+    fn part1_correct_output_for_test_input() {
         let contents = fs::read_to_string("test_input").unwrap();
         let result = day18_part1(&contents, 7, 12);
         assert_eq!(result, 22);
@@ -172,5 +192,19 @@ mod tests {
         let contents = fs::read_to_string("input").unwrap();
         let result = day18_part1(&contents, 71, 1024);
         assert_eq!(result, 506);
+    }
+
+    #[test]
+    fn part2_correct_output_for_test_input() {
+        let contents = fs::read_to_string("test_input").unwrap();
+        let result = day18_part2(&contents, 7, 12);
+        assert_eq!(result, String::from("6,1"));
+    }
+
+    #[test]
+    fn part2_correct_output_for_input() {
+        let contents = fs::read_to_string("input").unwrap();
+        let result = day18_part2(&contents, 71, 1024);
+        assert_eq!(result, String::from("62,6"));
     }
 }
