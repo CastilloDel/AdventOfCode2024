@@ -92,7 +92,7 @@ enum Cell {
 }
 
 fn main() {
-    let contents = fs::read_to_string("message.txt").unwrap();
+    let contents = fs::read_to_string("input").unwrap();
     let result = day18_part1(&contents, 71, 1024);
     println!("Day18 part 1 result: {result}");
     let result = day18_part2(&contents, 71, 1024);
