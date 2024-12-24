@@ -1,29 +1,40 @@
 use std::{collections::HashMap, fs};
 
+/*
+Example of equivalent sequences of different lengths
+
+
+^           ^   <               <               A
+
+<     A     A   <     v   A     A  >   >  ^     A
+
+v<<A  >>^A  A   <vA   <A  >>^A  A  vA  A  <^A   >A
+
+<vA  <A  A   >>^A  A   vA   <^A   >A  A   vA  ^A
+
+v    <   <   A     A   >    ^     A   A   >   A
+
+<                  <              ^   ^   A
+*/
+
 fn main() {
     let contents = fs::read_to_string("input").unwrap();
     let result = day21_part1(&contents);
     println!("Day21 part 1 result: {result}");
+    let result = day21_part2(&contents);
+    println!("Day21 part 2 result: {result}");
 }
 
 fn day21_part1(input: &str) -> usize {
     let codes = read_input(input);
-    let lengths = codes
-        .iter()
-        .map(|code| get_moves_for_numeric_keyboard(code))
-        .map(|codes| {
-            codes
-                .into_iter()
-                .flat_map(|code| get_moves_for_directional_keyboard(&code))
-                .collect::<Vec<String>>()
-        })
-        .map(|codes| {
-            codes
-                .into_iter()
-                .flat_map(|code| get_moves_for_directional_keyboard(&code))
-                .collect::<Vec<String>>()
-        })
-        .map(|codes| codes.iter().map(|code| code.len()).min().unwrap());
+    let mut memo = HashMap::new();
+    let lengths = codes.iter().map(|code| {
+        get_moves_for_numeric_keyboard(code)
+            .into_iter()
+            .map(|code| search(&mut memo, &code, 2))
+            .min()
+            .unwrap()
+    });
     let code_values = codes
         .iter()
         .map(|code| code[0..code.len() - 1].parse::<usize>().unwrap());
@@ -31,6 +42,46 @@ fn day21_part1(input: &str) -> usize {
         .zip(code_values)
         .map(|(sequence, code_value)| sequence * code_value)
         .sum()
+}
+
+fn day21_part2(input: &str) -> usize {
+    let codes = read_input(input);
+    let mut memo = HashMap::new();
+    let lengths = codes.iter().map(|code| {
+        get_moves_for_numeric_keyboard(code)
+            .into_iter()
+            .map(|code| search(&mut memo, &code, 25))
+            .min()
+            .unwrap()
+    });
+    let code_values = codes
+        .iter()
+        .map(|code| code[0..code.len() - 1].parse::<usize>().unwrap());
+    lengths
+        .zip(code_values)
+        .map(|(sequence, code_value)| sequence * code_value)
+        .sum()
+}
+
+fn search(memo: &mut HashMap<(String, usize), usize>, code: &str, times: usize) -> usize {
+    if times == 0 {
+        return code.len();
+    }
+    if let Some(result) = memo.get(&(code.to_string(), times)) {
+        return *result;
+    }
+    let result = get_moves_for_directional_keyboard(code)
+        .into_iter()
+        .map(|sequence| {
+            sequence
+                .split_inclusive("A")
+                .map(|independent_sequence| search(memo, independent_sequence, times - 1))
+                .sum()
+        })
+        .min()
+        .unwrap();
+    memo.insert((code.to_string(), times), result);
+    result
 }
 
 type Position = (usize, usize);
@@ -143,5 +194,19 @@ mod tests {
         let contents = fs::read_to_string("input").unwrap();
         let result = day21_part1(&contents);
         assert_eq!(result, 176650);
+    }
+
+    #[test]
+    fn part2_correct_output_for_test_input() {
+        let contents = fs::read_to_string("test_input").unwrap();
+        let result = day21_part2(&contents);
+        assert_eq!(result, 154115708116294);
+    }
+
+    #[test]
+    fn part2_correct_output_for_input() {
+        let contents = fs::read_to_string("input").unwrap();
+        let result = day21_part2(&contents);
+        assert_eq!(result, 217698355426872);
     }
 }
