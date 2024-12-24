@@ -125,35 +125,41 @@ fn main() {
     let contents = fs::read_to_string("input").unwrap();
     let result = day20_part1(&contents);
     println!("Day20 part 1 result: {result}");
+    let result = day20_part2(&contents);
+    println!("Day20 part 2 result: {result}");
 }
 
 fn day20_part1(input: &str) -> usize {
     let (_, matrix) = read_input(input).unwrap();
     let path = get_path_to_end(&matrix);
-    get_cheats(path)
-        .iter()
-        .filter(|(_, cost)| cost >= &100)
-        .count()
+    get_cheats(path, 2, 100).len()
 }
 
-fn get_cheats(path: Vec<(usize, usize)>) -> Vec<((Position, Position), usize)> {
+fn day20_part2(input: &str) -> usize {
+    let (_, matrix) = read_input(input).unwrap();
+    let path = get_path_to_end(&matrix);
+    get_cheats(path, 20, 100).len()
+}
+
+fn get_cheats(
+    path: Vec<(usize, usize)>,
+    max_length: usize,
+    min_save: usize,
+) -> Vec<((Position, Position), usize)> {
     let mut cheats = Vec::new();
     for (i, &pos1) in path.iter().enumerate() {
-        for (j, &pos2) in path.iter().enumerate().skip(i + 4) {
-            if is_cheat_possible(pos1, pos2) {
-                cheats.push(((pos1, pos2), j - i - 2));
+        for (j, &pos2) in path.iter().enumerate().skip(i + min_save) {
+            let distance = manhattan_distance(pos1, pos2);
+            let save = j - i - distance;
+            if distance <= max_length && save >= min_save {
+                cheats.push(((pos1, pos2), save));
             }
         }
     }
     cheats
 }
-fn is_cheat_possible(pos1: Position, pos2: Position) -> bool {
-    let vertical_diff = (pos1.0 as isize - pos2.0 as isize).abs();
-    let horizontal_diff = (pos1.1 as isize - pos2.1 as isize).abs();
-    (vertical_diff == 2 && horizontal_diff == 0) || (horizontal_diff == 2 && vertical_diff == 0)
-}
 
-fn guess_distance(pos1: Position, pos2: Position) -> usize {
+fn manhattan_distance(pos1: Position, pos2: Position) -> usize {
     (pos1.0 as isize - pos2.0 as isize).unsigned_abs()
         + (pos1.1 as isize - pos2.1 as isize).unsigned_abs()
 }
@@ -173,7 +179,7 @@ fn get_path_to_end(matrix: &Matrix<Cell>) -> Vec<Position> {
     let mut costs = HashMap::new();
     costs.insert(start, 0);
     let mut guesses = HashMap::new();
-    guesses.insert(start, guess_distance(start, end));
+    guesses.insert(start, manhattan_distance(start, end));
     let mut came_from = HashMap::new();
 
     while !open.is_empty() {
@@ -192,7 +198,7 @@ fn get_path_to_end(matrix: &Matrix<Cell>) -> Vec<Position> {
             let tentative_cost = costs[&current] + 1;
             if tentative_cost < *costs.get(&neighbor).unwrap_or(&usize::MAX) {
                 costs.insert(neighbor, tentative_cost);
-                guesses.insert(neighbor, tentative_cost + guess_distance(neighbor, end));
+                guesses.insert(neighbor, tentative_cost + manhattan_distance(neighbor, end));
                 open.insert(neighbor);
                 came_from.insert(neighbor, current);
             }
@@ -237,5 +243,12 @@ mod tests {
         let contents = fs::read_to_string("input").unwrap();
         let result = day20_part1(&contents);
         assert_eq!(result, 1507);
+    }
+
+    #[test]
+    fn part2_correct_output_for_input() {
+        let contents = fs::read_to_string("input").unwrap();
+        let result = day20_part2(&contents);
+        assert_eq!(result, 1037936);
     }
 }
