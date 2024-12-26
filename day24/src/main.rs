@@ -48,27 +48,38 @@ impl<'a> Gate<'a> {
 
 fn day24_part1(input: &str) -> usize {
     let (_, (initial_values, gates)) = read_input(input).unwrap();
-    let mut values = initial_values.into_iter().collect::<HashMap<&str, bool>>();
-    let mut gates_ref = gates.iter().collect::<Vec<&Gate>>();
-    while !gates_ref.is_empty() {
+    let values = initial_values.into_iter().collect::<HashMap<&str, bool>>();
+    get_computation_output(&gates, values)
+}
+
+fn get_computation_output<'a>(
+    gates: &'a Vec<Gate<'a>>,
+    mut values: HashMap<&'a str, bool>,
+) -> usize {
+    let mut gates = gates.iter().collect::<Vec<&Gate>>();
+    while !gates.is_empty() {
         let mut remaining_gates = Vec::new();
-        for gate in gates_ref {
+        for gate in gates {
             if let None = gate.apply_gate(&mut values) {
                 remaining_gates.push(gate);
             }
         }
-        gates_ref = remaining_gates;
+        gates = remaining_gates;
     }
+    get_variable_value(&values, "z")
+}
+
+fn get_variable_value(values: &HashMap<&str, bool>, name: &str) -> usize {
     let mut z_values = values
-        .into_iter()
-        .filter(|(k, _)| k.starts_with("z"))
+        .iter()
+        .filter(|(k, _)| k.starts_with(name))
         .collect::<Vec<_>>();
     z_values.sort_unstable_by_key(|&(k, _)| k);
     z_values
         .into_iter()
         .map(|(_, v)| v)
         .enumerate()
-        .map(|(i, v)| if v { 1 } else { 0 } << i)
+        .map(|(i, v)| if *v { 1 } else { 0 } << i)
         .sum()
 }
 
